@@ -65,14 +65,14 @@ setTimeout(async () => {
   }
 }, 10000);
 
-app.listen(PORT, () => {
+app.listen(Number(PORT), "0.0.0.0", () => {
   console.log(`
 ╔═══════════════════════════════════════════════════════╗
 ║                   LIQUIDIFY BACKEND                   ║
 ╠═══════════════════════════════════════════════════════╣
-║  Server:    http://localhost:${PORT}                      ║
-║  Health:    http://localhost:${PORT}/health               ║
-║  API:       http://localhost:${PORT}/api/tokens           ║
+║  Server:    http://0.0.0.0:${PORT}                        ║
+║  Health:    /health                                    ║
+║  API:       /api/tokens                                ║
 ╠═══════════════════════════════════════════════════════╣
 ║  Every 1 min: Claim fees → Buyback → LP (if bonded)   ║
 ╚═══════════════════════════════════════════════════════╝

@@ -38,7 +38,10 @@ tokenRoutes.get("/", async (req: Request, res: Response) => {
         graduated_at,
         last_feed_at
       `)
-      .eq("is_active", true)
+      // Only show tokens that have been successfully launched (not pending)
+      .neq("status", "pending")
+      .neq("status", "failed")
+      .not("mint", "is", null)
       .order("created_at", { ascending: false })
       .range(Number(offset), Number(offset) + Number(limit) - 1);
 
@@ -75,10 +78,13 @@ tokenRoutes.get("/", async (req: Request, res: Response) => {
  */
 tokenRoutes.get("/stats/global", async (req: Request, res: Response) => {
   try {
+    // Only count tokens that are actually launched (not pending/failed)
     const { data: tokens, error } = await supabase
       .from("tokens")
       .select("total_lp_fed, total_fees_claimed, total_volume, status")
-      .eq("is_active", true);
+      .neq("status", "pending")
+      .neq("status", "failed")
+      .not("mint", "is", null);
 
     if (error) {
       return res.status(500).json({ error: "Failed to fetch stats" });
@@ -266,6 +272,27 @@ tokenRoutes.post("/create", async (req: Request, res: Response) => {
     }
 
     console.log(`[API] Creating token: ${name} (${symbol})`);
+
+    // Clean up old pending tokens from same creator to avoid duplicates
+    const { data: pendingTokens } = await supabase
+      .from("tokens")
+      .select("id, created_at")
+      .eq("creator_wallet", creatorWallet)
+      .eq("status", "pending");
+
+    if (pendingTokens && pendingTokens.length > 0) {
+      // Delete pending tokens older than 5 minutes (failed launches)
+      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+      const oldPending = pendingTokens.filter(t => t.created_at < fiveMinutesAgo);
+      
+      if (oldPending.length > 0) {
+        console.log(`[API] Cleaning up ${oldPending.length} old pending token(s)...`);
+        await supabase
+          .from("tokens")
+          .delete()
+          .in("id", oldPending.map(t => t.id));
+      }
+    }
 
     // 1. Use provided dev wallet or generate new one
     let lpWallet: Keypair;
@@ -473,12 +500,13 @@ tokenRoutes.post("/:id/confirm", async (req: Request, res: Response) => {
       return res.status(500).json({ error: "Failed to update token" });
     }
 
-    // Record transaction
-    await supabase.from("transactions").insert({
+    // Record in feed_history instead of separate transactions table
+    await supabase.from("feed_history").insert({
       token_id: id,
       type: "create",
       signature,
-      status: "confirmed",
+      sol_amount: 0,
+      token_amount: 0,
     });
 
     // Get updated token
@@ -512,6 +540,39 @@ tokenRoutes.post("/:id/feed", async (req: Request, res: Response) => {
   } catch (error: unknown) {
     console.error("Error triggering feed:", error);
     res.status(500).json({ error: error instanceof Error ? error.message : "Unknown error" });
+  }
+});
+
+/**
+ * DELETE /api/tokens/cleanup - Clean up old pending tokens
+ */
+tokenRoutes.delete("/cleanup", async (req: Request, res: Response) => {
+  try {
+    // Delete tokens that are pending and older than 10 minutes
+    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    
+    const { data: deleted, error } = await supabase
+      .from("tokens")
+      .delete()
+      .eq("status", "pending")
+      .lt("created_at", tenMinutesAgo)
+      .select("id, name, symbol");
+
+    if (error) {
+      console.error("Cleanup error:", error);
+      return res.status(500).json({ error: "Cleanup failed" });
+    }
+
+    console.log(`[API] Cleaned up ${deleted?.length || 0} pending token(s)`);
+    
+    res.json({
+      success: true,
+      deleted: deleted?.length || 0,
+      tokens: deleted || [],
+    });
+  } catch (error) {
+    console.error("Error in cleanup:", error);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 

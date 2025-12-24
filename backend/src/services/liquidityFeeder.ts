@@ -22,10 +22,13 @@ interface TokenRecord {
 export async function processAllTokens(): Promise<void> {
   console.log("📋 Fetching active tokens from database...");
 
+  // Only process tokens that are actually live on pump.fun
+  // DO NOT process "pending" tokens - they haven't been confirmed yet!
   const { data: tokens, error } = await supabase
     .from("tokens")
     .select("id, name, symbol, mint, creator_wallet, bot_wallet_private, status")
-    .in("status", ["bonding", "graduated", "pending"]);
+    .in("status", ["bonding", "live", "graduating"])
+    .not("mint", "is", null);
 
   if (error) {
     console.error("Database error:", error);
@@ -49,6 +52,12 @@ export async function processAllTokens(): Promise<void> {
     // Skip if no bot wallet configured
     if (!token.bot_wallet_private) {
       console.log("   ⏭️ Skipping: No bot wallet configured");
+      continue;
+    }
+
+    // Skip if no mint address (shouldn't happen with our query, but safety check)
+    if (!token.mint) {
+      console.log("   ⏭️ Skipping: No mint address");
       continue;
     }
 
@@ -82,11 +91,11 @@ export async function processAllTokens(): Promise<void> {
         last_feed_at: new Date().toISOString(),
       };
 
-      // Update status if graduated
-      if (result.phase === "graduated" && token.status !== "graduated") {
-        updates.status = "graduated";
+      // Update status if graduated (use "live" as the graduated status for dashboard)
+      if (result.phase === "graduated" && token.status !== "live") {
+        updates.status = "live";
         updates.graduated_at = new Date().toISOString();
-        console.log(`   📈 Status updated to: graduated`);
+        console.log(`   📈 Status updated to: live (graduated)`);
       }
 
       // Update aggregate stats using raw SQL increment
@@ -134,6 +143,11 @@ export async function processAllTokens(): Promise<void> {
 
     } catch (err: any) {
       console.error(`   ❌ Error:`, err.message);
+      
+      // If error suggests token doesn't exist, consider marking it
+      if (err.message?.includes("Bad Request") || err.message?.includes("not found")) {
+        console.log(`   ⚠️ Token may not exist on pump.fun - consider checking`);
+      }
     }
   }
 

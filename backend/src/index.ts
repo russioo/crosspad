@@ -81,6 +81,25 @@ cron.schedule("* * * * *", async () => {
   }
 });
 
+// Cron job - every 10 minutes: clean up old pending tokens
+cron.schedule("*/10 * * * *", async () => {
+  try {
+    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    const { data: deleted, error } = await supabase
+      .from("tokens")
+      .delete()
+      .eq("status", "pending")
+      .lt("created_at", tenMinutesAgo)
+      .select("id");
+
+    if (!error && deleted && deleted.length > 0) {
+      console.log(`🧹 [CRON] Cleaned up ${deleted.length} old pending token(s)`);
+    }
+  } catch (error) {
+    console.error("❌ [CRON] Error in cleanup:", error);
+  }
+});
+
 // Run first cycle 10 seconds after startup
 setTimeout(async () => {
   console.log("🚀 [STARTUP] Running initial feed cycle...");

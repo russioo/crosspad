@@ -73,7 +73,7 @@ export default function Dashboard() {
             description="on bonding curve"
             accent="purple"
             loading={loading} 
-          />
+        />
           <StatCard 
             label="graduated" 
             value={graduatedTokens.toString()} 
@@ -163,7 +163,7 @@ export default function Dashboard() {
                   {/* Status */}
                   <div className="w-32">
                     <StatusBadge status={token.status} />
-                  </div>
+        </div>
 
                   {/* Stats */}
                   <div className="w-32 text-right">

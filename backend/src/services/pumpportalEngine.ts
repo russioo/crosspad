@@ -284,7 +284,16 @@ export class PumpPortalEngine {
 
       if (!response.ok) {
         const errorText = await response.text();
-        return { success: false, error: errorText };
+        // Better error messages for common errors
+        if (response.status === 400) {
+          if (errorText.includes("not found") || errorText.includes("does not exist")) {
+            return { success: false, error: "Token not found on pump.fun" };
+          }
+          if (errorText.includes("insufficient") || errorText.includes("balance")) {
+            return { success: false, error: "Insufficient balance" };
+          }
+        }
+        return { success: false, error: `${response.status}: ${errorText}` };
       }
 
       const txBytes = await response.arrayBuffer();

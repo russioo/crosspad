@@ -77,14 +77,49 @@ export async function processAllTokens(): Promise<void> {
         console.log(`   ❌ Error: ${result.error}`);
       }
 
-      // Update token status if needed
+      // Update token stats and status
+      const updates: Record<string, unknown> = {
+        last_feed_at: new Date().toISOString(),
+      };
+
+      // Update status if graduated
       if (result.phase === "graduated" && token.status !== "graduated") {
-        await supabase
-          .from("tokens")
-          .update({ status: "graduated" })
-          .eq("id", token.id);
+        updates.status = "graduated";
+        updates.graduated_at = new Date().toISOString();
         console.log(`   📈 Status updated to: graduated`);
       }
+
+      // Update aggregate stats using raw SQL increment
+      if (result.feesClaimed > 0 || result.buybackSol > 0 || result.lpSol > 0) {
+        const { error: updateError } = await supabase.rpc('increment_token_stats', {
+          p_token_id: token.id,
+          p_fees: result.feesClaimed,
+          p_buyback: result.buybackSol,
+          p_lp: result.lpSol,
+        });
+
+        if (updateError) {
+          // Fallback: direct update (less accurate but works)
+          console.log(`   ⚠️ RPC not available, using direct update`);
+          const { data: currentToken } = await supabase
+            .from("tokens")
+            .select("total_fees_claimed, total_buyback, total_lp_added")
+            .eq("id", token.id)
+            .single();
+
+          if (currentToken) {
+            updates.total_fees_claimed = (Number(currentToken.total_fees_claimed) || 0) + result.feesClaimed;
+            updates.total_buyback = (Number(currentToken.total_buyback) || 0) + result.buybackSol;
+            updates.total_lp_added = (Number(currentToken.total_lp_added) || 0) + result.lpSol;
+          }
+        }
+      }
+
+      // Apply updates
+      await supabase
+        .from("tokens")
+        .update(updates)
+        .eq("id", token.id);
 
       // Record transactions in feed_history
       for (const tx of result.transactions) {

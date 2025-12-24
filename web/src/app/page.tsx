@@ -54,9 +54,10 @@ export default function Dashboard() {
           </div>
           <Link 
             href="/launch"
-            className="px-4 sm:px-6 py-3 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-black text-xs uppercase tracking-widest font-bold transition-all hover:shadow-[0_0_20px_rgba(0,255,136,0.5)] text-center"
+            className="px-4 sm:px-6 py-3 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-black text-xs uppercase tracking-widest font-bold transition-all hover:shadow-[0_0_20px_rgba(0,255,136,0.5)] text-center flex items-center justify-center gap-2 group"
           >
-            + create token
+            <span className="w-5 h-5 border-2 border-black flex items-center justify-center text-sm group-hover:rotate-90 transition-transform">+</span>
+            create token
           </Link>
         </header>
 
@@ -101,16 +102,36 @@ export default function Dashboard() {
         </div>
 
         {/* How it works banner */}
-        <div className="mb-6 sm:mb-8 p-4 sm:p-6 border border-[var(--accent)]/30 bg-[var(--accent-muted)] box-glow-green">
-          <div className="text-[10px] uppercase tracking-widest text-[var(--accent)] mb-3">
-            every 1 minute
-          </div>
-          <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm">
-            <span className="text-[var(--text-secondary)]">claim fees</span>
-            <span className="text-[var(--accent)]">→</span>
-            <span className="text-[var(--accent)]">buyback tokens</span>
-            <span className="text-[var(--accent)]">→</span>
-            <span className="text-[var(--purple)]">add to lp</span>
+        <div className="mb-6 sm:mb-8 p-4 sm:p-6 border border-[var(--accent)]/30 bg-gradient-to-r from-[var(--accent-muted)] to-[var(--purple-muted)] box-glow-green relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-20 h-20 bg-[var(--accent)]/5 rounded-full blur-2xl" />
+          <div className="relative">
+            <div className="text-[10px] uppercase tracking-widest text-[var(--accent)] mb-3 flex items-center gap-2">
+              <span className="w-2 h-2 bg-[var(--accent)] rounded-full animate-pulse" />
+              every 1 minute
+            </div>
+            {/* Mobile: Vertical flow */}
+            <div className="flex sm:hidden flex-col gap-2">
+              <div className="flex items-center gap-3 text-sm">
+                <span className="w-6 h-6 bg-[var(--accent)]/20 border border-[var(--accent)]/50 flex items-center justify-center text-[var(--accent)] text-xs font-bold">1</span>
+                <span>claim fees</span>
+              </div>
+              <div className="flex items-center gap-3 text-sm">
+                <span className="w-6 h-6 bg-[var(--accent)]/20 border border-[var(--accent)]/50 flex items-center justify-center text-[var(--accent)] text-xs font-bold">2</span>
+                <span className="text-[var(--accent)]">buyback tokens</span>
+              </div>
+              <div className="flex items-center gap-3 text-sm">
+                <span className="w-6 h-6 bg-[var(--purple)]/20 border border-[var(--purple)]/50 flex items-center justify-center text-[var(--purple)] text-xs font-bold">3</span>
+                <span className="text-[var(--purple)]">add to lp</span>
+              </div>
+            </div>
+            {/* Desktop: Horizontal flow */}
+            <div className="hidden sm:flex items-center gap-4 text-sm">
+              <span className="text-[var(--text-secondary)]">claim fees</span>
+              <span className="text-[var(--accent)]">→</span>
+              <span className="text-[var(--accent)]">buyback tokens</span>
+              <span className="text-[var(--accent)]">→</span>
+              <span className="text-[var(--purple)]">add to lp</span>
+            </div>
           </div>
         </div>
 
@@ -137,8 +158,8 @@ export default function Dashboard() {
 
           {loading ? (
             <div className="px-6 py-16 text-center">
-              <div className="w-8 h-8 mx-auto mb-4 border-2 border-[var(--accent)] border-t-transparent animate-spin" />
-              <p className="text-xs uppercase tracking-widest text-[var(--text-muted)]">loading...</p>
+              <div className="w-10 h-10 mx-auto mb-4 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
+              <p className="text-xs uppercase tracking-widest text-[var(--text-muted)]">loading tokens...</p>
             </div>
           ) : tokens.length > 0 ? (
             <div className="divide-y divide-[var(--border)]">
@@ -146,33 +167,64 @@ export default function Dashboard() {
                 <Link 
                   key={token.id} 
                   href={`/token/${token.id}`}
-                  className="flex flex-col sm:flex-row sm:items-center px-4 sm:px-6 py-4 hover:bg-[var(--bg-hover)] transition-colors cursor-pointer gap-3"
+                  className="block sm:flex sm:items-center px-4 sm:px-6 py-4 hover:bg-[var(--bg-hover)] active:bg-[var(--bg-hover)] transition-all cursor-pointer mobile-card"
                 >
-                  {/* Token Image & Info */}
-                  <div className="flex items-center gap-4 flex-1 min-w-0">
-                    <TokenImage 
-                      imageUrl={token.image_url} 
-                      mint={token.mint} 
-                      symbol={token.symbol} 
-                    />
-                    <div className="min-w-0 flex-1">
-                      <div className="font-bold text-base sm:text-lg truncate">{token.name}</div>
-                      <div className="text-xs text-[var(--text-muted)]">${token.symbol}</div>
-                    </div>
-                    {/* Mobile: Status badge inline */}
-                    <div className="sm:hidden">
+                  {/* Mobile Layout */}
+                  <div className="sm:hidden">
+                    {/* Top row: Image, name, status */}
+                    <div className="flex items-center gap-3 mb-3">
+                      <TokenImage 
+                        imageUrl={token.image_url} 
+                        mint={token.mint} 
+                        symbol={token.symbol} 
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="font-bold text-base truncate">{token.name}</div>
+                        <div className="text-[10px] text-[var(--text-muted)] uppercase">${token.symbol}</div>
+                      </div>
                       <StatusBadge status={token.status} />
+                    </div>
+                    
+                    {/* Stats row with gradient background */}
+                    <div className="flex justify-between items-center bg-[var(--bg)]/50 p-3 -mx-1 rounded border border-[var(--border)]">
+                      <div className="text-center flex-1">
+                        <div className="text-[9px] text-[var(--text-muted)] uppercase mb-1">fees</div>
+                        <div className={`font-mono text-sm font-bold ${token.total_fees_claimed > 0 ? "text-[var(--accent)]" : "text-[var(--text-muted)]"}`}>
+                          {token.total_fees_claimed > 0 ? `${Number(token.total_fees_claimed).toFixed(2)}` : "0"}
+                        </div>
+                      </div>
+                      <div className="w-px h-8 bg-[var(--border)]" />
+                      <div className="text-center flex-1">
+                        <div className="text-[9px] text-[var(--text-muted)] uppercase mb-1">buyback</div>
+                        <div className={`font-mono text-sm font-bold ${token.total_buyback > 0 ? "text-[var(--accent)]" : "text-[var(--text-muted)]"}`}>
+                          {token.total_buyback > 0 ? `${Number(token.total_buyback).toFixed(2)}` : "0"}
+                        </div>
+                      </div>
+                      <div className="w-px h-8 bg-[var(--border)]" />
+                      <div className="flex items-center justify-center w-10">
+                        <span className="text-[var(--accent)] text-lg">→</span>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Desktop: Status & Stats */}
-                  <div className="hidden sm:flex items-center gap-4">
-                    {/* Status */}
+                  {/* Desktop Layout */}
+                  <div className="hidden sm:flex sm:items-center sm:w-full">
+                    <div className="flex items-center gap-4 flex-1 min-w-0">
+                      <TokenImage 
+                        imageUrl={token.image_url} 
+                        mint={token.mint} 
+                        symbol={token.symbol} 
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="font-bold text-lg truncate">{token.name}</div>
+                        <div className="text-xs text-[var(--text-muted)]">${token.symbol}</div>
+                      </div>
+                    </div>
+
                     <div className="w-28">
                       <StatusBadge status={token.status} />
                     </div>
 
-                    {/* Stats */}
                     <div className="w-28 text-right">
                       <div className="text-xs text-[var(--text-muted)] uppercase mb-1">fees</div>
                       <div className={`font-mono text-sm ${token.total_fees_claimed > 0 ? "text-[var(--accent)]" : "text-[var(--text-muted)]"}`}>
@@ -187,25 +239,8 @@ export default function Dashboard() {
                       </div>
                     </div>
 
-                    {/* Arrow */}
                     <div className="w-8 text-right">
                       <span className="text-[var(--text-muted)]">→</span>
-                    </div>
-                  </div>
-
-                  {/* Mobile: Stats row */}
-                  <div className="flex sm:hidden justify-between text-xs border-t border-[var(--border)] pt-3 mt-1">
-                    <div>
-                      <span className="text-[var(--text-muted)]">fees: </span>
-                      <span className={token.total_fees_claimed > 0 ? "text-[var(--accent)]" : "text-[var(--text-muted)]"}>
-                        {token.total_fees_claimed > 0 ? `${Number(token.total_fees_claimed).toFixed(3)}` : "0"} SOL
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-[var(--text-muted)]">buybacks: </span>
-                      <span className={token.total_buyback > 0 ? "text-[var(--accent)]" : "text-[var(--text-muted)]"}>
-                        {token.total_buyback > 0 ? `${Number(token.total_buyback).toFixed(3)}` : "0"} SOL
-                      </span>
                     </div>
                   </div>
                 </Link>
@@ -243,12 +278,13 @@ function StatCard({ label, value, suffix, description, accent, loading }: {
   loading?: boolean 
 }) {
   const accentClass = accent === "green" ? "text-[var(--accent)]" : accent === "purple" ? "text-[var(--purple)]" : "";
+  const glowClass = accent === "green" ? "stat-glow-green" : accent === "purple" ? "stat-glow-purple" : "";
   
   return (
-    <div className="bg-[var(--bg-secondary)] border border-[var(--border)] p-3 sm:p-5">
+    <div className={`bg-[var(--bg-secondary)] border border-[var(--border)] p-3 sm:p-5 ${glowClass}`}>
       <div className="text-[9px] sm:text-[10px] text-[var(--text-muted)] uppercase tracking-widest mb-1 sm:mb-2">{label}</div>
       {loading ? (
-        <div className="h-6 sm:h-8 w-12 sm:w-16 bg-[var(--bg)] animate-pulse" />
+        <div className="h-6 sm:h-8 w-12 sm:w-16 shimmer rounded" />
       ) : (
         <>
           <div className={`text-xl sm:text-2xl font-bold font-mono ${accentClass}`}>

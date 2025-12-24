@@ -245,9 +245,10 @@ function StatCard({ label, value, suffix, accent }: {
   accent?: "green" | "purple"; 
 }) {
   const accentClass = accent === "green" ? "text-[var(--accent)]" : accent === "purple" ? "text-[var(--purple)]" : "";
+  const glowClass = accent === "green" ? "stat-glow-green" : accent === "purple" ? "stat-glow-purple" : "";
   
   return (
-    <div className="bg-[var(--bg-secondary)] border border-[var(--border)] p-3 sm:p-5">
+    <div className={`bg-[var(--bg-secondary)] border border-[var(--border)] p-3 sm:p-5 ${glowClass}`}>
       <div className="text-[9px] sm:text-[10px] text-[var(--text-muted)] uppercase tracking-widest mb-1 sm:mb-2">{label}</div>
       <div className={`text-lg sm:text-xl font-bold font-mono ${accentClass}`}>
         {value}

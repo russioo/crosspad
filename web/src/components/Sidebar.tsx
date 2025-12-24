@@ -39,22 +39,30 @@ export function Sidebar() {
   return (
     <>
       {/* Mobile Header */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-[var(--bg-secondary)] border-b border-[var(--border)] px-4 py-3 flex items-center justify-between">
-        <Link href="/" className="block">
-          <div className="font-pixel text-[var(--accent)] text-sm glow-green tracking-wider">
-            LIQUIDIFY
+      <header className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-[var(--bg)]/95 backdrop-blur-md border-b border-[var(--accent)]/20 px-4 py-3 flex items-center justify-between">
+        <Link href="/" className="flex items-center gap-2">
+          <div className="w-8 h-8 bg-[var(--accent)] flex items-center justify-center">
+            <span className="text-black font-bold text-lg">L</span>
+          </div>
+          <div>
+            <div className="font-pixel text-[var(--accent)] text-xs glow-green tracking-wider">
+              LIQUIDIFY
+            </div>
+            <div className="text-[8px] text-[var(--text-muted)] uppercase tracking-widest">
+              auto-lp engine
+            </div>
           </div>
         </Link>
         <button
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="p-2 text-[var(--text-secondary)] hover:text-[var(--accent)]"
+          className="w-10 h-10 flex items-center justify-center border border-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--accent)] hover:border-[var(--accent)] transition-all"
         >
           {mobileMenuOpen ? (
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           ) : (
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           )}

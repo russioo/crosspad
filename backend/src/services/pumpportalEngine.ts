@@ -66,9 +66,9 @@ export class PumpPortalEngine {
       result.phase = graduated ? "graduated" : "bonding";
       console.log(`   Phase: ${result.phase.toUpperCase()}`);
 
-      // 1. Get current balance
+      // 1. Get balance BEFORE claiming
       const balanceBefore = await this.connection.getBalance(wallet.publicKey);
-      console.log(`   Balance before: ${(balanceBefore / LAMPORTS_PER_SOL).toFixed(4)} SOL`);
+      console.log(`   Balance before claim: ${(balanceBefore / LAMPORTS_PER_SOL).toFixed(4)} SOL`);
 
       // 2. Claim creator fees via pumpportal
       const claimResult = await this.claimCreatorFees(wallet);
@@ -81,48 +81,73 @@ export class PumpPortalEngine {
         console.log(`   ✅ Claimed fees: ${claimResult.solscanUrl}`);
       }
 
-      // Wait a moment for balance to update
+      // Wait for balance to update
       await new Promise(r => setTimeout(r, 2000));
 
-      // 3. Get new balance after claiming
+      // 3. Get balance AFTER claiming - difference = fees claimed
       const balanceAfter = await this.connection.getBalance(wallet.publicKey);
-      const claimed = (balanceAfter - balanceBefore) / LAMPORTS_PER_SOL;
-      result.feesClaimed = Math.max(0, claimed);
-      console.log(`   Fees claimed: ${result.feesClaimed.toFixed(4)} SOL`);
+      const feesClaimed = Math.max(0, (balanceAfter - balanceBefore) / LAMPORTS_PER_SOL);
+      result.feesClaimed = feesClaimed;
+      console.log(`   Balance after claim: ${(balanceAfter / LAMPORTS_PER_SOL).toFixed(4)} SOL`);
+      console.log(`   Fees claimed: ${feesClaimed.toFixed(4)} SOL`);
 
-      // 4. Only proceed if we have fees to use
-      const minSolForBuyback = 0.005; // Minimum SOL to do a buyback
-      const reserveForFees = 0.005; // Keep 0.005 SOL for transaction fees
-      const availableSol = balanceAfter / LAMPORTS_PER_SOL - reserveForFees;
-
-      if (availableSol < minSolForBuyback) {
-        console.log(`   ⏭️ Skipping: Not enough SOL (${availableSol.toFixed(4)} < ${minSolForBuyback})`);
+      // 4. Only proceed if we claimed fees
+      const minFeesForBuyback = 0.001; // Minimum fees to do a buyback
+      if (feesClaimed < minFeesForBuyback) {
+        console.log(`   ⏭️ Skipping: No fees claimed (${feesClaimed.toFixed(4)} < ${minFeesForBuyback})`);
         result.success = true;
-        result.error = "Not enough SOL for buyback";
         return result;
       }
 
-      // 5. Buyback via pumpportal - use ALL available SOL (minus reserve)
-      const buybackAmount = availableSol;
-      console.log(`   Buying back with ${buybackAmount.toFixed(4)} SOL (keeping ${reserveForFees} for fees)...`);
-      
-      const buyResult = await this.buyToken(wallet, config.mint, buybackAmount, graduated);
-      if (buyResult.success && buyResult.signature) {
-        result.buybackSol = buybackAmount;
-        result.transactions.push({
-          type: "buyback",
-          signature: buyResult.signature,
-          solscanUrl: `https://solscan.io/tx/${buyResult.signature}`,
-        });
-        console.log(`   ✅ Buyback: ${buyResult.solscanUrl}`);
-      } else {
-        console.log(`   ❌ Buyback failed: ${buyResult.error}`);
+      // 5. Use ONLY the claimed fees for buyback (not entire wallet)
+      // Reserve a bit for transaction fees
+      const txFeeReserve = 0.0005;
+      const buybackAmount = Math.max(0, feesClaimed - txFeeReserve);
+
+      if (buybackAmount < minFeesForBuyback) {
+        console.log(`   ⏭️ Skipping: Fees too small after tx reserve`);
+        result.success = true;
+        return result;
       }
 
-      // 6. If graduated, try to add LP (TODO: implement with pumpswap SDK)
+      // 6. If GRADUATED: 50% buyback, 50% LP
+      // If BONDING: 100% buyback
       if (graduated) {
-        console.log(`   🏊 LP addition: Coming soon (token is graduated)`);
+        const halfFees = buybackAmount / 2;
+        
+        // 50% Buyback
+        console.log(`   [GRADUATED] Buying back with ${halfFees.toFixed(4)} SOL (50%)...`);
+        const buyResult = await this.buyToken(wallet, config.mint, halfFees, graduated);
+        if (buyResult.success && buyResult.signature) {
+          result.buybackSol = halfFees;
+          result.transactions.push({
+            type: "buyback",
+            signature: buyResult.signature,
+            solscanUrl: `https://solscan.io/tx/${buyResult.signature}`,
+          });
+          console.log(`   ✅ Buyback: ${buyResult.solscanUrl}`);
+        }
+
+        // 50% LP (TODO: implement with pumpswap SDK)
+        console.log(`   [GRADUATED] LP addition: ${halfFees.toFixed(4)} SOL (50%) - Coming soon`);
+        result.lpSol = halfFees;
         // TODO: Add LP using @pump-fun/pump-swap-sdk
+        
+      } else {
+        // BONDING: 100% buyback
+        console.log(`   [BONDING] Buying back with ${buybackAmount.toFixed(4)} SOL (100%)...`);
+        const buyResult = await this.buyToken(wallet, config.mint, buybackAmount, graduated);
+        if (buyResult.success && buyResult.signature) {
+          result.buybackSol = buybackAmount;
+          result.transactions.push({
+            type: "buyback",
+            signature: buyResult.signature,
+            solscanUrl: `https://solscan.io/tx/${buyResult.signature}`,
+          });
+          console.log(`   ✅ Buyback: ${buyResult.solscanUrl}`);
+        } else {
+          console.log(`   ❌ Buyback failed: ${buyResult.error}`);
+        }
       }
 
       result.success = true;

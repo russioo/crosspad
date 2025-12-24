@@ -320,31 +320,44 @@ export class PumpPortalEngine {
         
         // Get LP token mint from pool state
         const lpMint = liquidityState.pool.lpMint;
+        console.log(`   LP Mint: ${lpMint.toBase58()}`);
         
-        // Get user's LP token account
-        const lpAta = await getAssociatedTokenAddress(lpMint, wallet.publicKey, false, TOKEN_PROGRAM_ID);
+        // Wait for LP tokens to arrive
+        await new Promise(r => setTimeout(r, 3000));
         
-        // Wait a moment for LP tokens to arrive
-        await new Promise(r => setTimeout(r, 2000));
-        
-        // Check LP balance
+        // Try both token programs - PumpSwap LP uses regular SPL Token, not Token-2022
         let lpBalance = BigInt(0);
+        let lpAta: PublicKey;
+        let tokenProgram = TOKEN_PROGRAM_ID;
+        
+        // Try regular SPL Token first
         try {
+          lpAta = await getAssociatedTokenAddress(lpMint, wallet.publicKey, false, TOKEN_PROGRAM_ID);
           const lpAcc = await getAccount(this.connection, lpAta, undefined, TOKEN_PROGRAM_ID);
           lpBalance = lpAcc.amount;
+          console.log(`   LP balance (SPL): ${Number(lpBalance)}`);
         } catch {
-          console.log(`   ⚠️ No LP token account found`);
+          // Try Token-2022
+          try {
+            lpAta = await getAssociatedTokenAddress(lpMint, wallet.publicKey, false, TOKEN_2022);
+            const lpAcc = await getAccount(this.connection, lpAta, undefined, TOKEN_2022);
+            lpBalance = lpAcc.amount;
+            tokenProgram = TOKEN_2022;
+            console.log(`   LP balance (Token-2022): ${Number(lpBalance)}`);
+          } catch {
+            console.log(`   ⚠️ No LP token account found in either program`);
+          }
         }
         
         if (lpBalance > 0) {
           // Burn all LP tokens
           const burnIx = createBurnInstruction(
-            lpAta,
+            lpAta!,
             lpMint,
             wallet.publicKey,
             lpBalance,
             [],
-            TOKEN_PROGRAM_ID
+            tokenProgram
           );
           
           const burnTx = new Transaction().add(burnIx);
@@ -362,6 +375,8 @@ export class PumpPortalEngine {
           burned = true;
           console.log(`   🔥 LP BURNED: https://solscan.io/tx/${burnSignature}`);
           console.log(`   💀 ${Number(lpBalance)} LP tokens permanently destroyed`);
+        } else {
+          console.log(`   ⚠️ No LP tokens to burn (balance: 0)`);
         }
       } catch (burnErr: any) {
         console.log(`   ⚠️ Burn failed (LP still added): ${burnErr.message}`);

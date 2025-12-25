@@ -23,7 +23,7 @@ export default function RoadmapPage() {
               Roadmap
             </p>
             <h1 className="text-4xl lg:text-5xl font-display mb-6 leading-tight">
-              What we're building
+              What we&apos;re building
             </h1>
           </div>
         </section>

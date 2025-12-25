@@ -197,16 +197,20 @@ export class PumpPortalEngine {
         return result;
       }
 
-      // 6. If GRADUATED: 100% buyback, then 50% of bought tokens to LP
-      // If custom split: only buyback, no LP
+      // 6. GRADUATED: Split 50/50 between buyback and LP
+      // For custom split tokens: 80% to wallet, then 10% buyback + 10% LP
+      // For normal tokens: 50% buyback + 50% LP
       const buybackAmount = availableForBuyback;
       
       if (graduated && poolKey) {
-        // Buyback with 100% of available SOL
-        console.log(`   [GRADUATED] Buying back with ${buybackAmount.toFixed(4)} SOL (100%)...`);
-        const buyResult = await this.buyToken(wallet, config.mint, buybackAmount, true);
+        // Split: 50% for buyback, 50% for LP
+        const halfAmount = buybackAmount / 2;
+        
+        // BUYBACK with 50%
+        console.log(`   [GRADUATED] Buying back with ${halfAmount.toFixed(4)} SOL (50%)...`);
+        const buyResult = await this.buyToken(wallet, config.mint, halfAmount, true);
         if (buyResult.success && buyResult.signature) {
-          result.buybackSol = buybackAmount;
+          result.buybackSol = halfAmount;
           result.transactions.push({
             type: "buyback",
             signature: buyResult.signature,
@@ -217,50 +221,30 @@ export class PumpPortalEngine {
           console.log(`   ❌ Buyback failed: ${buyResult.error}`);
         }
 
-        // Skip LP for custom split tokens
-        if (!customSplit && buyResult.success) {
-          // Wait for tokens to arrive
-          await new Promise(r => setTimeout(r, 3000));
+        // LP with 50%
+        if (halfAmount >= minFeesForBuyback) {
+          await new Promise(r => setTimeout(r, 2000));
 
-          // Get token balance after buyback
-          const mintPubkey = new PublicKey(config.mint);
-          const userAta = await getAssociatedTokenAddress(mintPubkey, wallet.publicKey, false, TOKEN_2022);
-          let tokenBalance = BigInt(0);
-          try {
-            const acc = await getAccount(this.connection, userAta, undefined, TOKEN_2022);
-            tokenBalance = acc.amount;
-          } catch {
-            console.log(`   ⚠️ No token account found`);
-          }
-
-          if (tokenBalance > 0) {
-            // Only add 50% of bought tokens to LP
-            const tokensForLp = tokenBalance / BigInt(2);
-            console.log(`   [GRADUATED] Adding 50% of tokens (${Number(tokensForLp) / 1e6}) to LP + BURN...`);
+          console.log(`   [GRADUATED] Adding ${halfAmount.toFixed(4)} SOL to LP (50%) + BURN...`);
+          const lpResult = await this.addLiquidity(wallet, config.mint, poolKey, halfAmount);
+          if (lpResult.success && lpResult.signature) {
+            result.lpSol = halfAmount;
+            result.lpTokens = lpResult.lpTokens;
+            result.transactions.push({
+              type: "add_liquidity",
+              signature: lpResult.signature,
+              solscanUrl: `https://solscan.io/tx/${lpResult.signature}`,
+            });
             
-            const lpResult = await this.addLiquidityWithTokens(wallet, config.mint, poolKey, tokensForLp);
-            if (lpResult.success && lpResult.signature) {
-              result.lpSol = lpResult.solUsed;
-              result.lpTokens = lpResult.lpTokens;
+            if (lpResult.burned && lpResult.burnSignature) {
               result.transactions.push({
-                type: "add_liquidity",
-                signature: lpResult.signature,
-                solscanUrl: `https://solscan.io/tx/${lpResult.signature}`,
+                type: "burn_lp",
+                signature: lpResult.burnSignature,
+                solscanUrl: `https://solscan.io/tx/${lpResult.burnSignature}`,
               });
-              
-              // Record burn transaction if successful
-              if (lpResult.burned && lpResult.burnSignature) {
-                result.transactions.push({
-                  type: "burn_lp",
-                  signature: lpResult.burnSignature,
-                  solscanUrl: `https://solscan.io/tx/${lpResult.burnSignature}`,
-                });
-              }
-            } else if (lpResult.error) {
-              console.log(`   ⚠️ LP skipped: ${lpResult.error}`);
             }
-          } else {
-            console.log(`   ⚠️ No tokens available for LP`);
+          } else if (lpResult.error) {
+            console.log(`   ⚠️ LP skipped: ${lpResult.error}`);
           }
         }
         

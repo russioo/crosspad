@@ -30,9 +30,13 @@ export function ActivityFeed() {
       case "claim_fees":
         return { label: "Claimed fees", icon: "💰", color: "text-[var(--success)]" };
       case "buyback":
-        return { label: "Bought back", icon: "🔥", color: "text-[var(--coral)]" };
+        return { label: "Bought back", icon: "📈", color: "text-[var(--coral)]" };
       case "add_liquidity":
         return { label: "Added LP", icon: "💎", color: "text-[var(--success)]" };
+      case "burn_tokens":
+        return { label: "Burned", icon: "🔥", color: "text-orange-500" };
+      case "burn_lp":
+        return { label: "LP Burned", icon: "🔥", color: "text-orange-500" };
       case "create":
         return { label: "Launched", icon: "🚀", color: "text-[var(--coral)]" };
       default:

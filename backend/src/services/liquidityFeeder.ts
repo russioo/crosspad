@@ -148,6 +148,11 @@ export async function processAllTokens(): Promise<void> {
             // For custom split tokens - calculate the transferred amount
             solAmount = result.feesClaimed * 0.80; // 80% transferred
             break;
+          case "burn_tokens":
+          case "burn_lp":
+            // Burns don't have SOL amount, but we still record them
+            solAmount = 0;
+            break;
           default:
             solAmount = 0;
         }

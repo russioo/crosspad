@@ -139,7 +139,7 @@ export default function TokenDetail() {
           )}
 
           {/* Info */}
-          <div className="p-4 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)] card-shadow">
+          <div className="p-4 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)] card-shadow mb-8">
             {token.status === "bonding" ? (
               <p className="text-sm text-[var(--text-secondary)]">
                 <span className="text-[var(--warning)] font-medium">Bonding:</span> Only buybacks active. LP added after graduation (~$55k).
@@ -150,6 +150,56 @@ export default function TokenDetail() {
               </p>
             )}
           </div>
+
+          {/* Chart */}
+          {token.mint && (
+            <div className="mb-8">
+              <h2 className="text-xl font-display mb-4">Price Chart</h2>
+              <div className="rounded-2xl overflow-hidden border border-[var(--border)] card-shadow" style={{ position: 'relative', paddingBottom: '65%' }}>
+                <iframe 
+                  src={`https://dexscreener.com/solana/${token.mint}?embed=1&loadChartSettings=0&trades=0&tabs=0&info=0&chartLeftToolbar=0&chartTheme=dark&theme=light&chartStyle=0&chartType=usd&interval=15`}
+                  style={{ position: 'absolute', width: '100%', height: '100%', top: 0, left: 0, border: 0 }}
+                  title="Price Chart"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Activity History */}
+          {token.feed_history && token.feed_history.length > 0 && (
+            <div>
+              <h2 className="text-xl font-display mb-4">Activity</h2>
+              <div className="space-y-2">
+                {token.feed_history.slice(0, 20).map((activity) => (
+                  <a
+                    key={activity.id}
+                    href={`https://solscan.io/tx/${activity.signature}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between p-3 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)] hover:border-[var(--border-hover)] transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                        activity.type === 'buyback' ? 'bg-[var(--success-muted)] text-[var(--success)]' :
+                        activity.type === 'lp_add' ? 'bg-[var(--warning-muted)] text-[var(--warning)]' :
+                        'bg-[var(--bg-warm)] text-[var(--coral)]'
+                      }`}>
+                        {activity.type === 'buyback' ? 'Buyback' : 
+                         activity.type === 'lp_add' ? 'LP Added' : 
+                         activity.type === 'fee_claim' ? 'Fee Claim' : activity.type}
+                      </span>
+                      <span className="text-sm font-medium">
+                        {Number(activity.sol_amount).toFixed(4)} SOL
+                      </span>
+                    </div>
+                    <span className="text-xs text-[var(--text-muted)]">
+                      {new Date(activity.created_at).toLocaleString()}
+                    </span>
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
         </section>
       </main>
     </div>

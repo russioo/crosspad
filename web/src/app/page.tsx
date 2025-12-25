@@ -11,6 +11,7 @@ export default function Dashboard() {
   const [stats, setStats] = useState<GlobalStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -34,6 +35,17 @@ export default function Dashboard() {
   }, [filter]);
 
   const graduatedTokens = tokens.filter(t => t.status === "live" || t.status === "graduating").length;
+
+  // Filter tokens by search
+  const filteredTokens = tokens.filter(t => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return (
+      t.name.toLowerCase().includes(q) ||
+      t.symbol.toLowerCase().includes(q) ||
+      t.mint?.toLowerCase().includes(q)
+    );
+  });
 
   return (
     <div className="min-h-screen relative">
@@ -132,32 +144,46 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-[1fr,380px] gap-8">
             {/* Tokens List */}
             <div className="opacity-0 animate-fade-in-up delay-400">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-8">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-6">
                 <h2 className="text-3xl font-display">All tokens</h2>
-              <div className="flex items-center gap-2 p-1 bg-white/50 backdrop-blur-sm rounded-full">
-                {[null, "live", "bonding"].map((status) => (
-                  <button
-                    key={status || "all"}
-                    onClick={() => setFilter(status)}
-                    className={`px-5 py-2.5 text-sm font-medium rounded-full transition-all duration-300 ${
-                      filter === status
-                        ? "bg-gradient-to-r from-[var(--coral)] to-[var(--orange)] text-white shadow-md"
-                        : "text-[var(--text-muted)] hover:text-[var(--text)]"
-                    }`}
-                  >
-                    {status === "live" ? "Graduated" : status || "All"}
-                  </button>
-                ))}
+                <div className="flex items-center gap-2 p-1 bg-white/50 backdrop-blur-sm rounded-full">
+                  {[null, "live", "bonding"].map((status) => (
+                    <button
+                      key={status || "all"}
+                      onClick={() => setFilter(status)}
+                      className={`px-5 py-2.5 text-sm font-medium rounded-full transition-all duration-300 ${
+                        filter === status
+                          ? "bg-gradient-to-r from-[var(--coral)] to-[var(--orange)] text-white shadow-md"
+                          : "text-[var(--text-muted)] hover:text-[var(--text)]"
+                      }`}
+                    >
+                      {status === "live" ? "Graduated" : status || "All"}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+
+              {/* Search */}
+              <div className="relative mb-6">
+                <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search by name, symbol, or mint..."
+                  className="w-full pl-12 pr-4 py-3 rounded-full bg-white/60 backdrop-blur-sm border border-[var(--border)] focus:border-[var(--coral)] focus:outline-none transition-colors text-sm"
+                />
+              </div>
 
             {loading ? (
               <div className="py-24 flex items-center justify-center">
                 <div className="loader" />
               </div>
-            ) : tokens.length > 0 ? (
+            ) : filteredTokens.length > 0 ? (
               <div className="grid gap-4">
-                {tokens.map((token, index) => (
+                {filteredTokens.map((token, index) => (
                   <Link 
                     key={token.id} 
                     href={`/token/${token.id}`}
@@ -192,6 +218,11 @@ export default function Dashboard() {
                     </div>
                   </Link>
                 ))}
+              </div>
+            ) : search ? (
+              <div className="glass rounded-[32px] py-16 text-center">
+                <h3 className="text-xl font-display mb-2">No results found</h3>
+                <p className="text-[var(--text-muted)]">Try a different search term</p>
               </div>
             ) : (
               <div className="glass rounded-[32px] py-20 text-center">

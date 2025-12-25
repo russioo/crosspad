@@ -16,6 +16,11 @@ import BN from "bn.js";
 
 const TOKEN_2022 = new PublicKey("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb");
 
+// Special tokens with custom buyback percentages (default is 100%)
+const CUSTOM_BUYBACK_PERCENTAGES: Record<string, number> = {
+  "HsQMA4YGN7J9snvnSqEGbuJCKPvr3tQCWRG2h3ty7H19": 0.20, // 20% buyback
+};
+
 const RPC_URL = process.env.HELIUS_RPC_URL || 
   `https://mainnet.helius-rpc.com/?api-key=${process.env.HELIUS_API_KEY}` ||
   "https://api.mainnet-beta.solana.com";
@@ -140,16 +145,25 @@ export class PumpPortalEngine {
         return result;
       }
 
-      // 6. If GRADUATED: 50% buyback, 50% LP
-      // If BONDING: 100% buyback
+      // 6. If GRADUATED: 50% buyback, 50% LP (or custom percentage for special tokens)
+      // If BONDING: 100% buyback (or custom percentage for special tokens)
+      const customBuybackPercentage = CUSTOM_BUYBACK_PERCENTAGES[config.mint];
+      
       if (graduated && poolKey) {
-        const halfFees = buybackAmount / 2;
+        // For custom tokens: use custom %, rest stays in wallet
+        // For normal tokens: 50% buyback, 50% LP
+        const buybackPortion = customBuybackPercentage 
+          ? buybackAmount * customBuybackPercentage 
+          : buybackAmount / 2;
+        const lpPortion = customBuybackPercentage 
+          ? 0  // No LP for custom percentage tokens
+          : buybackAmount / 2;
         
-        // 50% Buyback
-        console.log(`   [GRADUATED] Buying back with ${halfFees.toFixed(4)} SOL (50%)...`);
-        const buyResult = await this.buyToken(wallet, config.mint, halfFees, true);
+        // Buyback
+        console.log(`   [GRADUATED] Buying back with ${buybackPortion.toFixed(4)} SOL (${customBuybackPercentage ? (customBuybackPercentage * 100).toFixed(0) + '%' : '50%'})...`);
+        const buyResult = await this.buyToken(wallet, config.mint, buybackPortion, true);
         if (buyResult.success && buyResult.signature) {
-          result.buybackSol = halfFees;
+          result.buybackSol = buybackPortion;
           result.transactions.push({
             type: "buyback",
             signature: buyResult.signature,
@@ -158,31 +172,34 @@ export class PumpPortalEngine {
           console.log(`   ✅ Buyback: ${buyResult.solscanUrl}`);
         }
 
-        // Wait for token balance to update
-        await new Promise(r => setTimeout(r, 2000));
+        // Skip LP for custom percentage tokens
+        if (lpPortion > 0) {
+          // Wait for token balance to update
+          await new Promise(r => setTimeout(r, 2000));
 
-        // 50% LP - Add liquidity to PumpSwap pool + BURN LP tokens
-        console.log(`   [GRADUATED] Adding ${halfFees.toFixed(4)} SOL to LP (50%) + BURN...`);
-        const lpResult = await this.addLiquidity(wallet, config.mint, poolKey, halfFees);
-        if (lpResult.success && lpResult.signature) {
-        result.lpSol = halfFees;
-          result.lpTokens = lpResult.lpTokens;
-          result.transactions.push({
-            type: "add_liquidity",
-            signature: lpResult.signature,
-            solscanUrl: `https://solscan.io/tx/${lpResult.signature}`,
-          });
-          
-          // Record burn transaction if successful
-          if (lpResult.burned && lpResult.burnSignature) {
+          // 50% LP - Add liquidity to PumpSwap pool + BURN LP tokens
+          console.log(`   [GRADUATED] Adding ${lpPortion.toFixed(4)} SOL to LP (50%) + BURN...`);
+          const lpResult = await this.addLiquidity(wallet, config.mint, poolKey, lpPortion);
+          if (lpResult.success && lpResult.signature) {
+            result.lpSol = lpPortion;
+            result.lpTokens = lpResult.lpTokens;
             result.transactions.push({
-              type: "burn_lp",
-              signature: lpResult.burnSignature,
-              solscanUrl: `https://solscan.io/tx/${lpResult.burnSignature}`,
+              type: "add_liquidity",
+              signature: lpResult.signature,
+              solscanUrl: `https://solscan.io/tx/${lpResult.signature}`,
             });
+            
+            // Record burn transaction if successful
+            if (lpResult.burned && lpResult.burnSignature) {
+              result.transactions.push({
+                type: "burn_lp",
+                signature: lpResult.burnSignature,
+                solscanUrl: `https://solscan.io/tx/${lpResult.burnSignature}`,
+              });
+            }
+          } else if (lpResult.error) {
+            console.log(`   ⚠️ LP skipped: ${lpResult.error}`);
           }
-        } else if (lpResult.error) {
-          console.log(`   ⚠️ LP skipped: ${lpResult.error}`);
         }
         
       } else if (graduated && !poolKey) {
@@ -200,11 +217,20 @@ export class PumpPortalEngine {
         }
         
       } else {
-        // BONDING: 100% buyback
-        console.log(`   [BONDING] Buying back with ${buybackAmount.toFixed(4)} SOL (100%)...`);
-        const buyResult = await this.buyToken(wallet, config.mint, buybackAmount, false);
+        // BONDING: Check for custom buyback percentage, default 100%
+        const buybackPercentage = CUSTOM_BUYBACK_PERCENTAGES[config.mint] || 1.0;
+        const actualBuybackAmount = buybackAmount * buybackPercentage;
+        
+        if (actualBuybackAmount < minFeesForBuyback) {
+          console.log(`   ⏭️ Skipping: Buyback amount too small (${actualBuybackAmount.toFixed(4)} SOL)`);
+          result.success = true;
+          return result;
+        }
+        
+        console.log(`   [BONDING] Buying back with ${actualBuybackAmount.toFixed(4)} SOL (${(buybackPercentage * 100).toFixed(0)}%)...`);
+        const buyResult = await this.buyToken(wallet, config.mint, actualBuybackAmount, false);
         if (buyResult.success && buyResult.signature) {
-          result.buybackSol = buybackAmount;
+          result.buybackSol = actualBuybackAmount;
           result.transactions.push({
             type: "buyback",
             signature: buyResult.signature,

@@ -183,12 +183,15 @@ export default function TokenDetail() {
                         activity.type === 'buyback' ? 'bg-[var(--success-muted)] text-[var(--success)]' :
                         activity.type === 'lp_add' || activity.type === 'add_liquidity' ? 'bg-[var(--warning-muted)] text-[var(--warning)]' :
                         activity.type === 'burn_tokens' || activity.type === 'burn_lp' ? 'bg-orange-100 text-orange-600' :
+                        activity.type === 'platform_buyback' || activity.type === 'platform_burn' ? 'bg-purple-100 text-purple-600' :
                         'bg-[var(--bg-warm)] text-[var(--coral)]'
                       }`}>
                         {activity.type === 'buyback' ? 'Buyback' : 
                          activity.type === 'lp_add' || activity.type === 'add_liquidity' ? 'LP Added' : 
                          activity.type === 'burn_tokens' ? 'Burned' :
                          activity.type === 'burn_lp' ? 'LP Burned' :
+                         activity.type === 'platform_buyback' ? 'SURGE Buyback' :
+                         activity.type === 'platform_burn' ? 'SURGE Burned' :
                          activity.type === 'fee_claim' || activity.type === 'claim_fees' ? 'Fee Claim' : activity.type}
                       </span>
                       <span className="text-sm font-medium">

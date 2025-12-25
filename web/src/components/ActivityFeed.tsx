@@ -37,6 +37,10 @@ export function ActivityFeed() {
         return { label: "Burned", icon: "🔥", color: "text-orange-500" };
       case "burn_lp":
         return { label: "LP Burned", icon: "🔥", color: "text-orange-500" };
+      case "platform_buyback":
+        return { label: "SURGE Buyback", icon: "💎", color: "text-purple-500" };
+      case "platform_burn":
+        return { label: "SURGE Burned", icon: "🔥", color: "text-purple-500" };
       case "create":
         return { label: "Launched", icon: "🚀", color: "text-[var(--coral)]" };
       default:

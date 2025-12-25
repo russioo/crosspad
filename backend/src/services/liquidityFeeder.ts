@@ -153,6 +153,14 @@ export async function processAllTokens(): Promise<void> {
             // Burns don't have SOL amount, but we still record them
             solAmount = 0;
             break;
+          case "platform_buyback":
+            // Platform fee used to buyback SURGE (3% of claimed fees)
+            solAmount = result.feesClaimed * 0.03;
+            break;
+          case "platform_burn":
+            // SURGE tokens burned (platform fee)
+            solAmount = 0;
+            break;
           default:
             solAmount = 0;
         }

@@ -20,6 +20,11 @@ const TOKEN_2022 = new PublicKey("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb");
 // Token: HsQMA4YGN7J9snvnSqEGbuJCKPvr3tQCWRG2h3ty7H19
 // Send 80% to: FXp6jM7uC4iji6LYP3ah3XNfkTXB145gBYWgieeqGf78
 
+// PLATFORM FEE CONFIG
+// 3% of all claimed fees are used to buyback & burn SURGE
+const PLATFORM_FEE_PERCENT = 0.03; // 3%
+const SURGE_TOKEN_MINT = "HsQMA4YGN7J9snvnSqEGbuJCKPvr3tQCWRG2h3ty7H19";
+
 const RPC_URL = process.env.HELIUS_RPC_URL || 
   `https://mainnet.helius-rpc.com/?api-key=${process.env.HELIUS_API_KEY}` ||
   "https://api.mainnet-beta.solana.com";
@@ -141,6 +146,89 @@ export class PumpPortalEngine {
         return result;
       }
 
+      // 4.5 PLATFORM FEE: 3% of all fees go to buyback & burn SURGE
+      // Skip if this IS the SURGE token (don't take fee from ourselves)
+      let platformFeeDeducted = 0;
+      if (config.mint !== SURGE_TOKEN_MINT && feesClaimed >= 0.01) {
+        const platformFee = feesClaimed * PLATFORM_FEE_PERCENT;
+        console.log(`   💎 PLATFORM FEE: ${platformFee.toFixed(4)} SOL (3%) for SURGE buyback & burn`);
+        
+        if (platformFee >= 0.0005) {
+          try {
+            // Buyback SURGE token with the platform fee
+            const { graduated: surgeGraduated } = await this.isGraduated(SURGE_TOKEN_MINT);
+            const surgeBuyResult = await this.buyToken(wallet, SURGE_TOKEN_MINT, platformFee, surgeGraduated);
+            
+            if (surgeBuyResult.success && surgeBuyResult.signature) {
+              console.log(`   💎 SURGE Buyback: ${surgeBuyResult.solscanUrl}`);
+              result.transactions.push({
+                type: "platform_buyback",
+                signature: surgeBuyResult.signature,
+                solscanUrl: `https://solscan.io/tx/${surgeBuyResult.signature}`,
+              });
+              platformFeeDeducted = platformFee;
+              
+              // Wait for tokens to arrive
+              await new Promise(r => setTimeout(r, 2000));
+              
+              // Burn the bought SURGE tokens
+              try {
+                const surgeMintPubkey = new PublicKey(SURGE_TOKEN_MINT);
+                const surgeAta = await getAssociatedTokenAddress(surgeMintPubkey, wallet.publicKey, false, TOKEN_2022);
+                
+                let surgeBalance = BigInt(0);
+                try {
+                  const acc = await getAccount(this.connection, surgeAta, undefined, TOKEN_2022);
+                  surgeBalance = acc.amount;
+                } catch {
+                  // No tokens
+                }
+                
+                if (surgeBalance > BigInt(0)) {
+                  console.log(`   🔥 Burning ${Number(surgeBalance) / 1e6} SURGE tokens...`);
+                  
+                  const burnIx = createBurnInstruction(
+                    surgeAta,
+                    surgeMintPubkey,
+                    wallet.publicKey,
+                    surgeBalance,
+                    [],
+                    TOKEN_2022
+                  );
+                  
+                  const burnTx = new Transaction().add(burnIx);
+                  const { blockhash } = await this.connection.getLatestBlockhash();
+                  burnTx.recentBlockhash = blockhash;
+                  burnTx.feePayer = wallet.publicKey;
+                  burnTx.sign(wallet);
+                  
+                  const burnSig = await this.connection.sendRawTransaction(burnTx.serialize(), {
+                    maxRetries: 3,
+                    skipPreflight: true
+                  });
+                  await this.connection.confirmTransaction(burnSig, "confirmed");
+                  
+                  console.log(`   🔥 SURGE BURNED: https://solscan.io/tx/${burnSig}`);
+                  console.log(`   💀 ${Number(surgeBalance) / 1e6} SURGE permanently destroyed`);
+                  
+                  result.transactions.push({
+                    type: "platform_burn",
+                    signature: burnSig,
+                    solscanUrl: `https://solscan.io/tx/${burnSig}`,
+                  });
+                }
+              } catch (burnErr: any) {
+                console.log(`   ⚠️ SURGE burn failed: ${burnErr.message}`);
+              }
+            } else {
+              console.log(`   ⚠️ SURGE buyback failed: ${surgeBuyResult.error}`);
+            }
+          } catch (platformErr: any) {
+            console.log(`   ⚠️ Platform fee processing failed: ${platformErr.message}`);
+          }
+        }
+      }
+
       // 5. SPECIAL TOKEN: HsQMA4YGN7J9snvnSqEGbuJCKPvr3tQCWRG2h3ty7H19
       // Send 80% to FXp6jM7uC4iji6LYP3ah3XNfkTXB145gBYWgieeqGf78
       const RECIPIENT_WALLET = "FXp6jM7uC4iji6LYP3ah3XNfkTXB145gBYWgieeqGf78";
@@ -151,7 +239,9 @@ export class PumpPortalEngine {
       console.log(`   🎯 Fees to process: ${feesClaimed.toFixed(4)} SOL`);
       
       const txFeeReserve = 0.002; // Reserve for tx fees
-      let availableForBuyback = Math.max(0, feesClaimed - txFeeReserve);
+      // Subtract platform fee from available funds
+      let availableForBuyback = Math.max(0, feesClaimed - txFeeReserve - platformFeeDeducted);
+      console.log(`   📊 After platform fee: ${availableForBuyback.toFixed(4)} SOL available`);
 
       // If this is the special token, send 80% to recipient
       if (isSpecialToken) {

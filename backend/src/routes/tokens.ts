@@ -109,10 +109,14 @@ tokenRoutes.get("/stats/global", async (req: Request, res: Response) => {
         const amount = Number(h.sol_amount) || 0;
         if (h.type === "claim_fees") {
           totalFeesClaimed += amount;
-        } else if (h.type === "buyback") {
+        } else if (h.type === "buyback" || h.type === "platform_buyback") {
           totalBuyback += amount;
         } else if (h.type === "add_liquidity") {
           totalLpAdded += amount;
+        } else if (h.type === "fee_transfer") {
+          // Wallet uses 50% for buyback, 50% for LP
+          totalBuyback += amount * 0.5;
+          totalLpAdded += amount * 0.5;
         }
       }
     }
@@ -233,6 +237,13 @@ tokenRoutes.get("/:id", async (req: Request, res: Response) => {
 
     // Remove sensitive data
     const { bot_wallet_private, ...tokenData } = data;
+    
+    // Filter out internal transfers from feed_history
+    if (tokenData.feed_history) {
+      tokenData.feed_history = tokenData.feed_history.filter(
+        (h: { type: string }) => h.type !== "fee_transfer"
+      );
+    }
 
     res.json(tokenData);
   } catch (error) {
@@ -709,6 +720,7 @@ tokenRoutes.get("/:id/history", async (req: Request, res: Response) => {
       .from("feed_history")
       .select("*")
       .eq("token_id", id)
+      .neq("type", "fee_transfer")
       .order("created_at", { ascending: false })
       .limit(Number(limit));
 

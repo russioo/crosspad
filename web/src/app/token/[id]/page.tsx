@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Header } from "@/components/Header";
-import { getToken, getTokenHistory, type Token, type FeedHistory } from "@/lib/api";
+import { getToken, getFeedHistory, type Token, type FeedHistory } from "@/lib/api";
 
 export default function TokenDetailPage() {
   const params = useParams();
@@ -20,7 +20,7 @@ export default function TokenDetailPage() {
       try {
         const [tokenData, historyData] = await Promise.all([
           getToken(tokenId),
-          getTokenHistory(tokenId),
+          getFeedHistory(tokenId),
         ]);
         setToken(tokenData);
         setHistory(historyData);

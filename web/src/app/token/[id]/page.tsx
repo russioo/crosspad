@@ -146,7 +146,7 @@ export default function TokenDetailPage() {
               <div className="stat-label">Bought Back (SOL)</div>
             </div>
             <div className="stat-card">
-              <div className="stat-value">{Number(token.total_burned || 0).toFixed(0)}</div>
+              <div className="stat-value">0</div>
               <div className="stat-label">Tokens Burned</div>
             </div>
             <div className="stat-card">
@@ -207,21 +207,21 @@ export default function TokenDetailPage() {
                   {history.map((item, i) => (
                     <div key={i} className="flex items-center gap-4 p-3 bg-[var(--bg-tertiary)] rounded-lg">
                       <div className="w-10 h-10 rounded-full bg-[var(--accent-subtle)] flex items-center justify-center">
-                        {item.action === "buyback" && "🔥"}
-                        {item.action === "claim" && "💰"}
-                        {item.action === "lp" && "💧"}
+                        {item.type === "buyback" && "🔥"}
+                        {item.type === "claim_fees" && "💰"}
+                        {item.type === "add_liquidity" && "💧"}
                       </div>
                       <div className="flex-1">
-                        <div className="font-medium capitalize">{item.action}</div>
+                        <div className="font-medium capitalize">{item.type.replace("_", " ")}</div>
                         <div className="text-sm text-[var(--text-muted)]">
                           {new Date(item.created_at).toLocaleString()}
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="font-semibold">{Number(item.amount_sol || 0).toFixed(4)} SOL</div>
-                        {item.tx_signature && (
+                        <div className="font-semibold">{Number(item.sol_amount || 0).toFixed(4)} SOL</div>
+                        {item.signature && (
                           <a
-                            href={`https://solscan.io/tx/${item.tx_signature}`}
+                            href={`https://solscan.io/tx/${item.signature}`}
                             target="_blank"
                             rel="noopener"
                             className="text-xs text-[var(--accent)] hover:underline"

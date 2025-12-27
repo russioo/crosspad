@@ -531,46 +531,42 @@ export default function LaunchPage() {
                 <button
                   onClick={prevStep}
                   disabled={currentStepIndex === 0}
-                  className={`flex items-center gap-2 px-5 py-3 rounded-xl font-medium transition-all ${
+                  className={`group transition-all ${
                     currentStepIndex === 0 
-                      ? 'opacity-30 cursor-not-allowed text-[var(--ink-faded)]' 
-                      : 'text-[var(--ink-muted)] hover:text-[var(--ink)] hover:bg-[var(--ink)]/5'
+                      ? 'opacity-0 pointer-events-none' 
+                      : 'opacity-100'
                   }`}
                 >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M11 17l-5-5m0 0l5-5m-5 5h12" />
-                  </svg>
-                  Back
+                  <span className="flex items-center gap-2 text-[var(--ink-muted)] group-hover:text-[var(--ink)] transition-colors">
+                    <span className="text-lg">←</span>
+                    <span className="font-serif text-lg">Back</span>
+                  </span>
                 </button>
 
                 {step === "review" ? (
-                  <motion.button 
-                    className="flex items-center gap-2 px-8 py-4 rounded-full bg-[var(--ink)] text-[var(--bg-cream)] font-medium hover:bg-[var(--accent)] transition-all hover:-translate-y-0.5"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    Deploy Token
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                    </svg>
-                  </motion.button>
+                  <button className="group">
+                    <span className="flex items-center gap-3">
+                      <span className="font-serif text-xl text-[var(--accent)]">Deploy Token</span>
+                      <span className="text-[var(--accent)] text-lg group-hover:translate-x-1 transition-transform">→</span>
+                    </span>
+                    <span className="block h-[2px] bg-[var(--accent)] mt-1" />
+                  </button>
                 ) : (
-                  <motion.button
+                  <button
                     onClick={nextStep}
                     disabled={!canProceed()}
-                    className={`flex items-center gap-2 px-8 py-4 rounded-full font-medium transition-all ${
-                      !canProceed() 
-                        ? 'opacity-50 cursor-not-allowed bg-[var(--ink)]/20 text-[var(--ink-faded)]' 
-                        : 'bg-[var(--ink)] text-[var(--bg-cream)] hover:bg-[var(--accent)] hover:-translate-y-0.5'
+                    className={`group transition-all ${
+                      !canProceed() ? 'opacity-40 cursor-not-allowed' : ''
                     }`}
-                    whileHover={canProceed() ? { scale: 1.02 } : {}}
-                    whileTap={canProceed() ? { scale: 0.98 } : {}}
                   >
-                    Continue
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                    </svg>
-                  </motion.button>
+                    <span className="flex items-center gap-3">
+                      <span className={`font-serif text-xl ${canProceed() ? 'text-[var(--accent)]' : 'text-[var(--ink-faded)]'}`}>
+                        Continue
+                      </span>
+                      <span className={`text-lg transition-transform ${canProceed() ? 'text-[var(--accent)] group-hover:translate-x-1' : 'text-[var(--ink-faded)]'}`}>→</span>
+                    </span>
+                    <span className={`block h-[2px] mt-1 ${canProceed() ? 'bg-[var(--accent)]' : 'bg-[var(--ink-faded)]'}`} />
+                  </button>
                 )}
               </div>
             </div>

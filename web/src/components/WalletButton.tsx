@@ -5,7 +5,7 @@ import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { useCallback, useMemo } from "react";
 
 export function WalletButton() {
-  const { publicKey, wallet, disconnect, connecting } = useWallet();
+  const { publicKey, disconnect, connecting } = useWallet();
   const { setVisible } = useWalletModal();
 
   const base58 = useMemo(() => publicKey?.toBase58(), [publicKey]);

@@ -6,7 +6,7 @@ import { Header } from "@/components/Header";
 import { motion, useInView, useSpring, useTransform, useScroll } from "framer-motion";
 
 // Animated counter component
-function AnimatedCounter({ value, suffix = "" }: { value: string; suffix?: string }) {
+function AnimatedCounter({ value }: { value: string }) {
   const ref = useRef<HTMLSpanElement>(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
   const numericValue = parseFloat(value.replace(/[^0-9.]/g, "")) || 0;

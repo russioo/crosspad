@@ -61,7 +61,7 @@ export default function TokenDetailPage() {
               <div className="text-4xl mb-4">🔍</div>
               <h2 className="text-2xl font-bold mb-2">Token not found</h2>
               <p className="text-[var(--text-secondary)] mb-6">
-                This token doesn't exist or has been removed.
+                This token does not exist or has been removed.
               </p>
               <Link href="/tokens" className="btn btn-primary">
                 Browse Tokens
